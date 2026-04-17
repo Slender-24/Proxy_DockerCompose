@@ -16,8 +16,9 @@ Com a pas inicial, es va redactar un fitxer elemental `index.html`, agrupant els
 Es va crear una versió primigènia de l'arxiu orquestrador `docker-compose.yml` que només contenia un servidor web *Apache* utilitzant la imatge oficial `httpd:latest`.
 **Problemes trobats**: Cap. La configuració clàssica d'Apache funcionava directament provant sobre el port obert per defecte a localhost.
 
-![Captura de pantalla de Fase 1] 
-> **[INSERIR CAPTURA AQUÍ: Pàgina web corrent correctament al seu estadi individual]**
+Captura de la Fase 1:
+<img width="1856" height="1033" alt="image" src="https://github.com/user-attachments/assets/4acf2ec8-808a-4f8c-8906-dd7e4bf4d5b0" />
+
 
 ### Fase 2: Segon node web
 A continuació es va introduir a l'orquestració de Docker Compose un segon backend anomenat `apache2`, configurant-li exactament la mateixa imatge que al primer.
@@ -46,8 +47,8 @@ Finalment, un bloqueig de memòria virtual cau va ser dissenyat establint una as
 
 Com es prova i evidencia amb el header addicional dissenyat per monitoratge general implementat explícitament `X-Cache-Status` podent extreure de l'inspector `HIT`, `MISS` i `EXPIRED` (amb latència o absència depenent en la recàrrega):
 
-![Captura de pantalla demostrativa HTTP CACHE HIT/MISS] 
-> **[INSERIR CAPTURA AQUÍ: Mostrar a la captura visual i subrallar dins l'Inspector la línia de capçalera X-Cache-Status rotant MISS i HIT de resposta amb l'assignatura aprovada]**
+CACHE HIT:
+<img width="810" height="230" alt="image" src="https://github.com/user-attachments/assets/ef9137f3-5324-4cbd-a6f6-81f24c5309ed" />
 
 ---
 
