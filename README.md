@@ -1,62 +1,58 @@
-# Entrega de Práctica: Proxy Inverso (Nginx) y Balanceo de Carga
+# Pràctica: Proxies amb Nginx (Infraestructura amb Docker Compose)
 
-Esta es la entrega correspondiente a la práctica de configuración de un Proxy Inverso con balanceo de carga y sistema de caché, haciendo uso de contenedores Docker. 
+**Mòdul**: 0378 SAD · ASIC
+**Centre**: Institut El Calamot
 
-A continuación, se detallan los componentes técnicos y las instrucciones necesarias para la ejecución y evaluación del sistema.
+Aquest repositori conté el codi i la memòria de l'evolució de la pràctica d'alta disponibilitat implementant un Proxy Invers amb memòria cau i balanceig de càrrega utilitzant contenidors Docker.
 
-## Arquitectura del Entorno
+---
 
-La topología está orquestada mediante **Docker Compose** y cuenta con los siguientes componentes:
+## 🚀 Fases de Desenvolupament
 
-- **Nginx (Proxy Inverso):** Expuesto en el puerto `80` del host local. Recibe todo el tráfico entrante, realiza el balanceo de carga entre los servidores web y aplica una regla de caché máxima de 500 MB (ubicada en `/var/cache/nginx`).
-- **Nodos Backend (Apache 1 y Apache 2):** Dos servidores HTTP independientes operando en una red interna. Ambos reciben las peticiones delegadas del proxy inverso equilibrando la carga de trabajo a través del algoritmo por defecto *Round Robin*.
-- **Volumen Compartido (`html/`):** Directorio centralizado que alimenta de forma simultánea a ambos contenedores Apache. Su objetivo es garantizar la consistencia en el contenido servido (archivos de imagen, vídeo e index original) sin necesidad de duplicar la información.
+Al llarg del projecte, s'ha construït la infraestructura de forma incremental complint cada requeriment indicat a la rúbrica d'avaluació.
 
-## Pasos para Evaluación (Despliegue)
+### Fase 1: Un sol node web
+Com a pas inicial, es va redactar un fitxer elemental `index.html`, agrupant els recursos multimèdia indicats (tres imatges i un vídeo reduït).
+Es va crear una versió primigènia de l'arxiu orquestrador `docker-compose.yml` que només contenia un servidor web *Apache* utilitzant la imatge oficial `httpd:latest`.
+**Problemes trobats**: Cap. La configuració clàssica d'Apache funcionava directament provant sobre el port obert per defecte a localhost.
 
-Para proceder con la comprobación de la infraestructura, se requiere de un entorno Linux (o similar) que disponga de `Docker` y `Docker Compose`.
+![Captura de pantalla de Fase 1] 
+> **[INSERIR CAPTURA AQUÍ: Pàgina web corrent correctament al seu estadi individual]**
 
-**1. Clonar el repositorio**
-Ejecute el siguiente comando para descargar este proyecto:
-```bash
-git clone <ENLACE_DE_ESTE_REPOSITORIO_GITHUB>
-cd <NOMBRE_DEL_REPOSITORIO>
-```
+### Fase 2: Segon node web
+A continuació es va introduir a l'orquestració de Docker Compose un segon backend anomenat `apache2`, configurant-li exactament la mateixa imatge que al primer.
+Per tal de distingir quin node responia cada petició en el futur es va planificar inicialment investigar logs, per posteriorment descobrir i implementar l'enviament de l'adreça IP del servidor upstream mitjançant capçaleres configurades en un pass frontal, que ens identificaren cadascú de forma directa al propi inspector del navegador (solució implementada més endavant).
+**Problemes trobats**: En provar de testejar en l'avaluació local els dos servidors webs paral·lels, hi havia un xoc lògic assignant els ports (els dos pretenien escoltar directament el `80:80` obrint conflictes). Es va solucionar tapant-los amb `expose: "80"` deixant els ports només reeixits per la xarxa interna de docker, i preparant el terreny per al Nginx frontal final.
 
-**2. Verificación de archivos multimedia**
-El sistema espera contar con los siguientes archivos estáticos dentro de la carpeta local `./html/`:
-- `imagen1.jpg`, `imagen2.jpg`, `imagen3.jpg`
-- `video.mp4`
+### Fase 3: Volum compartit
+L'objectiu següent era mantenir la consistència entre el servidor `apache1` i `apache2` sense arribar a utilitzar la clònica de materials per construir les imatges prefabricades (estalviant pes). Es va generar un directori de treball extern `/html/` d'on vam localitzar l'estructura de fitxers desitjada, i utilitzant **Volums de Docker (Volumes)** al fitxer compose (`./html:/usr/local/apache2/htdocs`), vam forçar als dos apaches a absorbir el servei simultàniament d'una sola arrel unida actualitzable al vol.
 
-**3. Despliegue de los contenedores**
-Desde el directorio raíz que incluye el archivo `docker-compose.yml`, levante la infraestructura en segundo plano:
-```bash
-sudo docker compose up -d
-```
+### Fase 4: Proxy Invers amb balanceig (Round Robin)
+El gruix de l'operació va consistir a posar en actiu de proxy centralitzador Nginx de la família `nginx:latest`. S'hi va connectar un volum d'arxiu en només lectura a `/etc/nginx/nginx.conf` i obrint exclusivament com a única exposició externa en ell el port 80 de client d'admissió en lloc dels contenidors apache ja aïllats.
 
-## Verificación Práctica
+Mitjançant la directiva **`upstream`** al fitxer del proxy, definírem com a destinataris de processament el grup lògic sota `apache1:80` i `apache2:80`. Nginx fa natural i per defecte el balanceig **Round Robin** a parts iguals entre aquestes peticions. Utilitzant l'ordre de `proxy_pass` enviem el flux final al *backend*.
 
-Una vez arrancado, ponga a prueba el sistema siguiendo estos pasos:
+A més a més, vam emmagatzemar finalment una línia especial per afegir la petició d'identificació de resposta de fase 2: `add_header X-Backend-Server $upstream_addr;`.  
 
-1. **Acceso inicial y caché:** 
-   Abra el navegador web e introduzca `http://localhost`. Deberá visualizar correctamente la web integrada con las 3 imágenes y el vídeo alojados, habiendo pasado la petición por el Nginx inicial.
-   
-2. **Comprobación de Tolerancia a Fallos (Balanceo):**
-   Puede simular de forma sencilla una caída de cualquiera de los servidores para comprobar que el proxy mantiene la disponibilidad. En la terminal escriba:
-   ```bash
-   sudo docker stop apache1
-   ```
-   A continuación, refresque la página web en `http://localhost`. Esta seguirá cargando con normalidad de forma transparente e ininterrumpida debido a que Nginx ha distribuido la petición a `apache2`.
+**Problemes trobats**: Errors de latència o resolució en un estret marge a la construcció si s'inicia el Nginx abans que els DNS dels altres contenidors del compostat estiguessin preparats; resolt creant un procés seqüencial segur amb `depends_on`.
 
-3. **Verificación de logs (opcional):**
-   Si desea analizar cómo el proxy distribuye el tráfico, visualice los registros en directo mientras refresca la ventana web:
-   ```bash
-   sudo docker compose logs -f
-   ```
+En el test actual comprovem la funcionalitat d'aquesta rotació al desgranar el flux a l'inspector del proveïdor amb la captura rotant cada clic de F5 demostrant de qui extreu informació:
 
-## Finalización y Limpieza
+![Captura de pantalla de Balanceig Round Robin] 
+> **[INSERIR CAPTURA AQUÍ: Captura de l'inspector HTTP obrint i identificant X-Backend-Server: 172.x.x.x diferent rotant o al aturar el node 1 i veure com només entra del 2 ]**
 
-Para apagar el entorno y limpiar la red generada, al finalizar sus comprobaciones ejecute:
-```bash
-sudo docker compose down
-```
+### Fase 5: Memòria cau (Proxy Cache)
+Finalment, un bloqueig de memòria virtual cau va ser dissenyat establint una assignació a `/var/cache/nginx` del directori Nginx utilitzant `proxy_cache_path` amb les delimitacions obligatòries limitant l'extensió on s'allotjava al màxim assequible fins `max_size=500m`. Habilitant zones de memòria 200 en `location` amb la directiva `proxy_cache mi_cache;`. 
+
+Com es prova i evidencia amb el header addicional dissenyat per monitoratge general implementat explícitament `X-Cache-Status` podent extreure de l'inspector `HIT`, `MISS` i `EXPIRED` (amb latència o absència depenent en la recàrrega):
+
+![Captura de pantalla demostrativa HTTP CACHE HIT/MISS] 
+> **[INSERIR CAPTURA AQUÍ: Mostrar a la captura visual i subrallar dins l'Inspector la línia de capçalera X-Cache-Status rotant MISS i HIT de resposta amb l'assignatura aprovada]**
+
+---
+
+### Instruccions Tècniques Curtes per Avaluador (Desplegament i Eliminació de Xarxa docker)
+1. Col·locar per primer cop el grup d'emmagatzematge multimèdia local intern `/html/` correctament els (`imagen1.jpg`, `imagen2.jpg`, `imagen3.jpg` i `video.mp4`).
+2. S'activa a la xarxa sencera a segon pla per l'escriptori / port extern `sudo docker compose up -d` 
+3. S'accedeix via un ordinador de visualització al host port exposat des d'un navegador amb http per resoldre IP en `http://localhost`.
+4. El sistema s'entera local per tancar amb  `sudo docker compose down`.
