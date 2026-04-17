@@ -7,7 +7,7 @@ Aquest repositori conté el codi i la memòria de l'evolució de la pràctica d'
 
 ---
 
-## 🚀 Fases de Desenvolupament
+## Fases de Desenvolupament
 
 Al llarg del projecte, s'ha construït la infraestructura de forma incremental complint cada requeriment indicat a la rúbrica d'avaluació.
 
@@ -39,8 +39,9 @@ A més a més, vam emmagatzemar finalment una línia especial per afegir la peti
 
 En el test actual comprovem la funcionalitat d'aquesta rotació al desgranar el flux a l'inspector del proveïdor amb la captura rotant cada clic de F5 demostrant de qui extreu informació:
 
-![Captura de pantalla de Balanceig Round Robin] 
-> **[INSERIR CAPTURA AQUÍ: Captura de l'inspector HTTP obrint i identificant X-Backend-Server: 172.x.x.x diferent rotant o al aturar el node 1 i veure com només entra del 2 ]**
+CAPTURA DE ROUND ROBIN:
+<img width="1533" height="323" alt="image" src="https://github.com/user-attachments/assets/b607dc7c-8d3b-4650-b984-d396934a2f47" />
+
 
 ### Fase 5: Memòria cau (Proxy Cache)
 Finalment, un bloqueig de memòria virtual cau va ser dissenyat establint una assignació a `/var/cache/nginx` del directori Nginx utilitzant `proxy_cache_path` amb les delimitacions obligatòries limitant l'extensió on s'allotjava al màxim assequible fins `max_size=500m`. Habilitant zones de memòria 200 en `location` amb la directiva `proxy_cache mi_cache;`. 
