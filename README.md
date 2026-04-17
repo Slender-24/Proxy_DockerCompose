@@ -1,7 +1,6 @@
 # Pràctica: Proxies amb Nginx (Infraestructura amb Docker Compose)
 
-**Mòdul**: 0378 SAD · ASIC
-**Centre**: Institut El Calamot
+
 
 Aquest repositori conté el codi i la memòria de l'evolució de la pràctica d'alta disponibilitat implementant un Proxy Invers amb memòria cau i balanceig de càrrega utilitzant contenidors Docker.
 
